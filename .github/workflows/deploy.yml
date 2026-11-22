@@ -19,7 +19,7 @@ env:
   AWS_REGION: eu-north-1
   EB_APPLICATION: my-nodejs-app
   EB_ENVIRONMENT: My-nodejs-app-dev
-  EB_S3_BUCKET: elasticbeanstalk-eu-north-1-413451208018
+  EB_S3_BUCKET: elasticbeanstalk-eu-north-1-682227955413
   NODE_VERSION: '20'
 
 jobs:
@@ -47,7 +47,7 @@ jobs:
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::413451208018:role/github-actions-beanstalk
+          role-to-assume: arn:aws:iam::682227955413:role/github-actions-beanstalk
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Create source bundle
