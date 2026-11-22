@@ -89,9 +89,12 @@ jobs:
       - name: Deploy to Elastic Beanstalk environment
         run: |
           set -euo pipefail
+          # Remove the sample-app 'AppSource' template parameter carried over from
+          # the initial sample deployment; it is invalid for our own versions.
           aws elasticbeanstalk update-environment \
             --environment-name "${{ env.EB_ENVIRONMENT }}" \
             --version-label "${{ github.sha }}" \
+            --options-to-remove "Namespace=aws:cloudformation:template:parameter,OptionName=AppSource" \
             --region "${{ env.AWS_REGION }}"
 
       - name: Wait for deployment to complete
