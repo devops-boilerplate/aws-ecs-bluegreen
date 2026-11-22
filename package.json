@@ -1,0 +1,14 @@
+{
+  "name": "beanstalk-nodejs-app",
+  "version": "1.0.0",
+  "description": "Node.js test application deployed on AWS Elastic Beanstalk",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "ISC"
+}

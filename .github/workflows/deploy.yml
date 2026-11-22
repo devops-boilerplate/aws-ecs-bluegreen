@@ -1,0 +1,110 @@
+name: Deploy to AWS Elastic Beanstalk
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Least-privilege permissions for the workflow
+permissions:
+  id-token: write   # Required for OIDC authentication with AWS
+  contents: read    # Required to checkout the repository
+
+# Prevent concurrent deployments to the same environment
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: eu-north-1
+  EB_APPLICATION: my-nodejs-app
+  EB_ENVIRONMENT: My-nodejs-app-dev
+  EB_S3_BUCKET: elasticbeanstalk-eu-north-1-413451208018
+  NODE_VERSION: '20'
+
+jobs:
+  deploy:
+    name: Build and deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --if-present
+
+      - name: Run tests
+        run: npm test --if-present
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::413451208018:role/github-actions-beanstalk
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Create source bundle
+        run: |
+          set -euo pipefail
+          # Exclude VCS, dependencies, CI config and local files from the bundle
+          zip -r deploy.zip . \
+            -x '*.git*' \
+            -x 'node_modules/*' \
+            -x '.github/*' \
+            -x '*.md' \
+            -x 'deploy.zip'
+
+      - name: Upload source bundle to S3
+        run: |
+          set -euo pipefail
+          aws s3 cp deploy.zip \
+            "s3://${{ env.EB_S3_BUCKET }}/beanstalk-nodejs-app/${{ github.sha }}.zip" \
+            --region "${{ env.AWS_REGION }}"
+
+      - name: Create application version (if new)
+        run: |
+          set -euo pipefail
+          if aws elasticbeanstalk describe-application-versions \
+               --application-name "${{ env.EB_APPLICATION }}" \
+               --version-labels "${{ github.sha }}" \
+               --query 'ApplicationVersions[0].VersionLabel' \
+               --output text 2>/dev/null | grep -qx "${{ github.sha }}"; then
+            echo "Application version ${{ github.sha }} already exists, skipping creation."
+          else
+            aws elasticbeanstalk create-application-version \
+              --application-name "${{ env.EB_APPLICATION }}" \
+              --version-label "${{ github.sha }}" \
+              --source-bundle "S3Bucket=${{ env.EB_S3_BUCKET }},S3Key=beanstalk-nodejs-app/${{ github.sha }}.zip" \
+              --process \
+              --region "${{ env.AWS_REGION }}"
+          fi
+
+      - name: Deploy to Elastic Beanstalk environment
+        run: |
+          set -euo pipefail
+          aws elasticbeanstalk update-environment \
+            --environment-name "${{ env.EB_ENVIRONMENT }}" \
+            --version-label "${{ github.sha }}" \
+            --region "${{ env.AWS_REGION }}"
+
+      - name: Wait for deployment to complete
+        run: |
+          set -euo pipefail
+          aws elasticbeanstalk wait environment-updated \
+            --environment-names "${{ env.EB_ENVIRONMENT }}" \
+            --region "${{ env.AWS_REGION }}"
+
+      - name: Show environment URL
+        run: |
+          aws elasticbeanstalk describe-environments \
+            --environment-names "${{ env.EB_ENVIRONMENT }}" \
+            --query 'Environments[0].CNAME' \
+            --output text \
+            --region "${{ env.AWS_REGION }}"
