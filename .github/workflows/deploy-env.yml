@@ -118,7 +118,7 @@ jobs:
           build-args: APP_VERSION=${{ inputs.image_tag }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          provenance: false
+          provenance: mode=max
           sbom: false
 
       - name: Resolve the deployed digest
@@ -154,7 +154,12 @@ jobs:
           artifact-name: sbom-${{ inputs.environment }}-${{ inputs.image_tag }}.spdx.json
           output-file: sbom-${{ inputs.environment }}.spdx.json
 
-      - name: Attest build provenance
+      - name: Note GitHub attestation availability
+        if: github.event.repository.private
+        run: echo "::notice title=GitHub attestation skipped::GitHub artifact attestations require a public repository. The image carries a BuildKit provenance attestation instead."
+
+      - name: Attest build provenance (GitHub)
+        if: github.event.repository.private == false
         uses: actions/attest-build-provenance@v4
         with:
           subject-name: ${{ steps.image.outputs.name }}
