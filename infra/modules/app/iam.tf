@@ -151,6 +151,12 @@ resource "aws_iam_role_policy" "gha_app" {
         Resource = "arn:${local.partition}:ecs:${local.region}:${local.account_id}:task-definition/${local.name_prefix}:*"
       },
       {
+        Sid      = "DescribeTaskDefinitions"
+        Effect   = "Allow"
+        Action   = ["ecs:DescribeTaskDefinition"]
+        Resource = "*"
+      },
+      {
         Sid    = "Service"
         Effect = "Allow"
         Action = [
