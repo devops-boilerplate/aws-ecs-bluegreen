@@ -99,8 +99,13 @@ ESLint, tests Node, `npm audit` (dépendances de production), gitleaks, Trivy
 `dev` et `prod`) et le plan Terraform de `dev`.
 
 Sur `main`, chaque fusion lance le déploiement de `dev`. La production est
-déployée uniquement lors du push d'un tag `vX.Y.Z`, après approbation manuelle
-de l'environnement GitHub `prod`.
+déployée uniquement depuis un tag `vX.Y.Z`, par un lancement manuel de
+`deploy.yml` sur ce tag. L'environnement GitHub `prod` n'accepte que `main` et
+les tags `v*`.
+
+GitHub Free pour un dépôt privé ne permet pas d'exiger un reviewer sur un
+environnement. Le lancement manuel depuis le tag constitue donc l'approbation ;
+si le plan le permet, `setup-github-env.sh prod` configure aussi le reviewer.
 
 ## Environnements
 
@@ -162,10 +167,15 @@ git pull
 git tag -a v2.0.0 -m "v2.0.0"
 git push origin v2.0.0
 gh release create v2.0.0 --generate-notes --verify-tag
+
+# Déclencher le déploiement prod depuis le tag
+gh workflow run deploy.yml --ref v2.0.0 -f prod_tag=v2.0.0
 ```
 
-Le push du tag déclenche `deploy.yml`. Le job `Deploy prod` attend l'approbation
-dans l'onglet **Actions** avant de construire et de déployer l'image.
+Le push du tag déclenche `deploy.yml`, qui exécute la CI et vérifie que le tag
+est semver et ancêtre de `main`. Le déploiement prod démarre ensuite par le
+lancement manuel sur le tag. Le job construit l'image `v2.0.0`, la scanne, puis
+la déploie en canary.
 
 Après la fusion de la pull request d'infrastructure, activer la protection de
 `main` :
