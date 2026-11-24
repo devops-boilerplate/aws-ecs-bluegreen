@@ -89,6 +89,10 @@ affiche un avertissement et se termine sans plan tant que les variables de
 l'environnement `dev` ne sont pas configurées, ce qui permet d'ouvrir la première
 pull request avant le bootstrap AWS.
 
+Le job `Secret scan` installe le binaire gitleaks épinglé (`8.30.1`) depuis la
+release officielle et vérifie sa somme SHA-256. L'action `gitleaks-action`
+exige une licence pour les organisations, alors que le binaire reste libre.
+
 Pendant un déploiement, les contrôles supplémentaires sont :
 
 - scan de l'image avec Trivy, bloquant sur les vulnérabilités
