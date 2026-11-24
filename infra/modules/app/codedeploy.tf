@@ -32,8 +32,9 @@ resource "aws_codedeploy_deployment_group" "app" {
 
   blue_green_deployment_config {
     deployment_ready_option {
-      action_on_timeout    = "STOP_DEPLOYMENT"
-      wait_time_in_minutes = 60
+      # Shift traffic automatically as soon as the replacement task set is
+      # healthy. Use STOP_DEPLOYMENT only for a manual ContinueDeployment gate.
+      action_on_timeout = "CONTINUE_DEPLOYMENT"
     }
 
     terminate_blue_instances_on_deployment_success {

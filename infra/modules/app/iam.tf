@@ -199,10 +199,14 @@ resource "aws_iam_role_policy" "gha_app" {
         ]
       },
       {
-        Sid      = "CodeDeployReadDeployments"
-        Effect   = "Allow"
-        Action   = ["codedeploy:GetDeployment"]
-        Resource = "arn:${local.partition}:codedeploy:${local.region}:${local.account_id}:deployment:*"
+        Sid    = "CodeDeployReadDeployments"
+        Effect = "Allow"
+        Action = ["codedeploy:GetDeployment"]
+        Resource = [
+          local.codedeploy_app_arn,
+          local.codedeploy_dg_arn,
+          "arn:${local.partition}:codedeploy:${local.region}:${local.account_id}:deployment:*",
+        ]
       },
       {
         Sid      = "CodeDeployLists"

@@ -213,9 +213,10 @@ Le rôle applicatif ne peut transmettre que les rôles d'exécution et de tâche
   unhealthy car l'image `:bootstrap` n'existe pas. C'est attendu et cela
   n'empêche pas le premier déploiement CodeDeploy.
 - Le premier déploiement enregistre une révision avec l'image réelle par digest.
-- Le deployment group attend jusqu'à 60 minutes que le task set de remplacement
-  soit prêt. Au-delà, le déploiement est arrêté et annulé automatiquement. Un
-  échec ou une alarme déclenche également le rollback.
+- Le deployment group bascule le trafic automatiquement dès que le task set de
+  remplacement est sain. Un échec ou une alarme déclenche le rollback. Pour
+  imposer une validation manuelle, utiliser `action_on_timeout =
+  "STOP_DEPLOYMENT"` et appeler `aws deploy continue-deployment`.
 
 ## Monitoring
 
