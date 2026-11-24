@@ -50,7 +50,7 @@ jobs:
 
     outputs:
       image: ${{ steps.image.outputs.ref }}
-      digest: ${{ steps.digest.outputs.digest }}
+      digest: ${{ steps.platform.outputs.digest }}
       deployment_id: ${{ steps.release.outputs.deployment_id }}
 
     steps:
@@ -137,10 +137,33 @@ jobs:
 
           echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
 
+      - name: Resolve the linux/arm64 manifest digest
+        id: platform
+        env:
+          IMAGE_REF: ${{ steps.image.outputs.ref }}
+          INDEX_DIGEST: ${{ steps.digest.outputs.digest }}
+        run: |
+          set -euo pipefail
+
+          MANIFEST=$(docker buildx imagetools inspect "${IMAGE_REF}@${INDEX_DIGEST}" --format '{{json .Manifest}}')
+          if jq -e '.manifests' >/dev/null 2>&1 <<<"$MANIFEST"; then
+            DIGEST=$(jq -r '.manifests[] | select(.platform.os == "linux" and .platform.architecture == "arm64") | .digest' <<<"$MANIFEST" | head -n1)
+          else
+            DIGEST="$INDEX_DIGEST"
+          fi
+
+          if [ -z "$DIGEST" ] || [ "$DIGEST" = "null" ]; then
+            echo "::error::Unable to resolve the linux/arm64 manifest digest."
+            exit 1
+          fi
+
+          echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
+          echo "Deploying ${IMAGE_REF}@${DIGEST}"
+
       - name: Scan the image (blocking on fixable HIGH/CRITICAL)
         uses: aquasecurity/trivy-action@v0.36.0
         with:
-          image-ref: ${{ steps.image.outputs.ref }}@${{ steps.digest.outputs.digest }}
+          image-ref: ${{ steps.image.outputs.ref }}@${{ steps.platform.outputs.digest }}
           severity: HIGH,CRITICAL
           ignore-unfixed: true
           exit-code: 1
@@ -149,7 +172,7 @@ jobs:
       - name: Generate SPDX SBOM
         uses: anchore/sbom-action@v0
         with:
-          image: ${{ steps.image.outputs.ref }}@${{ steps.digest.outputs.digest }}
+          image: ${{ steps.image.outputs.ref }}@${{ steps.platform.outputs.digest }}
           format: spdx-json
           artifact-name: sbom-${{ inputs.environment }}-${{ inputs.image_tag }}.spdx.json
           output-file: sbom-${{ inputs.environment }}.spdx.json
@@ -163,7 +186,7 @@ jobs:
         uses: actions/attest-build-provenance@v4
         with:
           subject-name: ${{ steps.image.outputs.name }}
-          subject-digest: ${{ steps.digest.outputs.digest }}
+          subject-digest: ${{ steps.platform.outputs.digest }}
 
       - name: Download the current task definition
         run: |
@@ -178,7 +201,7 @@ jobs:
         with:
           task-definition: task-definition.json
           container-name: ${{ vars.CONTAINER_NAME }}
-          image: ${{ steps.image.outputs.ref }}@${{ steps.digest.outputs.digest }}
+          image: ${{ steps.image.outputs.ref }}@${{ steps.platform.outputs.digest }}
 
       - name: Register the task definition and create the CodeDeploy deployment
         id: release
