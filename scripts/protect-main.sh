@@ -33,7 +33,8 @@ fi
 
 echo "repository: ${REPO}"
 
-gh api --method PUT "repos/${REPO}/branches/main/protection" --input - >/dev/null <<'JSON'
+protection_applied=false
+if gh api --method PUT "repos/${REPO}/branches/main/protection" --input - >/dev/null 2>&1 <<'JSON'
 {
   "required_status_checks": {
     "strict": true,
@@ -67,7 +68,14 @@ gh api --method PUT "repos/${REPO}/branches/main/protection" --input - >/dev/nul
   "allow_fork_syncing": false
 }
 JSON
+then
+  protection_applied=true
+else
+  echo "warning: branch protection is unavailable for this repository on the current GitHub plan." >&2
+fi
 
+# These repository settings do not require branch protection and are safe to
+# apply on every plan.
 gh api --method PATCH "repos/${REPO}" \
   -F allow_squash_merge=true \
   -F allow_merge_commit=false \
@@ -81,7 +89,8 @@ gh api --method PATCH "repos/${REPO}" \
 # Release tags must not be moved or deleted: the image tag is immutable and the
 # deployed digest is resolved from it.
 RULESET_NAME="release-tags"
-RULESET_ID="$(gh api "repos/${REPO}/rulesets" --paginate --jq ".[] | select(.name == \"${RULESET_NAME}\") | .id" | head -n 1)"
+RULESET_ID="$(gh api "repos/${REPO}/rulesets" --paginate \
+  --jq ".[] | select(.name == \"${RULESET_NAME}\") | .id" 2>/dev/null | head -n 1 || true)"
 
 RULESET_PAYLOAD="$(jq -n --arg name "$RULESET_NAME" '{
   name: $name,
@@ -99,27 +108,70 @@ RULESET_PAYLOAD="$(jq -n --arg name "$RULESET_NAME" '{
   ]
 }')"
 
+ruleset_applied=false
 if [[ -n "$RULESET_ID" ]]; then
-  gh api --method PUT "repos/${REPO}/rulesets/${RULESET_ID}" --input - <<<"$RULESET_PAYLOAD" >/dev/null
+  if gh api --method PUT "repos/${REPO}/rulesets/${RULESET_ID}" --input - <<<"$RULESET_PAYLOAD" >/dev/null 2>&1; then
+    ruleset_applied=true
+  fi
 else
-  gh api --method POST "repos/${REPO}/rulesets" --input - <<<"$RULESET_PAYLOAD" >/dev/null
+  if gh api --method POST "repos/${REPO}/rulesets" --input - <<<"$RULESET_PAYLOAD" >/dev/null 2>&1; then
+    ruleset_applied=true
+  fi
+fi
+
+if [[ "$ruleset_applied" != true ]]; then
+  echo "warning: repository rulesets are unavailable for this repository on the current GitHub plan." >&2
 fi
 
 cat <<EOF
 
-main is now protected:
+Protection status:
+  - branch protection: $(if [[ "$protection_applied" == true ]]; then echo "applied"; else echo "unavailable"; fi)
+  - release-tag ruleset: $(if [[ "$ruleset_applied" == true ]]; then echo "applied"; else echo "unavailable"; fi)
+  - repository merges: squash-only, branch deleted after merge
+  - post-push guard: .github/workflows/main-guard.yml fails when a commit
+    reaches main without a merged pull request
+
+EOF
+
+if [[ "$protection_applied" == true ]]; then
+  cat <<EOF
+main is protected:
   - pull requests are mandatory, even for administrators
   - the branch must be up to date with main
   - all CI checks must pass
   - linear history only (squash merge), force pushes and deletions blocked
   - conversations must be resolved before merging
 
-Repository merge settings updated: squash-only, branch deleted after merge.
+EOF
+else
+  cat <<EOF
+Hard branch protection could not be applied. GitHub Free for private
+repositories does not provide branch protection or repository rulesets.
+The squash-only merge setting and the Main guard workflow remain active.
 
+To enable hard protection, upgrade the repository to GitHub Pro or make it
+public, then rerun this script.
+
+EOF
+fi
+
+if [[ "$ruleset_applied" == true ]]; then
+  cat <<EOF
 Release tags matching v* cannot be moved or deleted. To recover from a bad tag,
 disable the release-tags ruleset in Settings > Rules, fix the tag, then re-enable
 it.
 
+EOF
+else
+  cat <<EOF
+Release tags are not protected by a ruleset on this plan. Do not move or delete
+a v* tag manually; publish a new patch version instead.
+
+EOF
+fi
+
+cat <<EOF
 If a check is renamed in .github/workflows/ci.yml, update the contexts list in
 this script and run it again.
 EOF
