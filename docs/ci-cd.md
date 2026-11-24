@@ -118,8 +118,8 @@ rôles de chaque environnement n'acceptent que les sujets suivants :
 
 | Environnement | Sujets autorisés |
 | --- | --- |
-| `dev` | `repo:ebouther/beanstalk-nodejs-app:ref:refs/heads/main` et `repo:ebouther/beanstalk-nodejs-app:environment:dev` |
-| `prod` | `repo:ebouther/beanstalk-nodejs-app:environment:prod` |
+| `dev` | `repo:ebouther@14021292/beanstalk-nodejs-app@1467806025:ref:refs/heads/main` et `repo:ebouther@14021292/beanstalk-nodejs-app@1467806025:environment:dev` |
+| `prod` | `repo:ebouther@14021292/beanstalk-nodejs-app@1467806025:environment:prod` |
 
 Conséquences :
 

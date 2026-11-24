@@ -3,6 +3,10 @@ locals {
   environment       = "dev"
   state_bucket_name = "beanstalk-nodejs-app-tfstate-682227955413"
 
+  # The repository uses immutable OIDC subjects, so the claim prefix includes
+  # the owner and repository numeric IDs.
+  github_subject_prefix = "repo:ebouther@14021292/beanstalk-nodejs-app@1467806025"
+
   tags = {
     Project     = local.app_name
     Environment = local.environment
@@ -24,8 +28,8 @@ module "app" {
 
   github_oidc_provider_arn = data.aws_iam_openid_connect_provider.github.arn
   github_subject_claims = [
-    "repo:ebouther/beanstalk-nodejs-app:ref:refs/heads/main",
-    "repo:ebouther/beanstalk-nodejs-app:environment:dev",
+    "${local.github_subject_prefix}:ref:refs/heads/main",
+    "${local.github_subject_prefix}:environment:dev",
   ]
 
   # dev: one task, all-at-once deployments, short-lived previous task set.
