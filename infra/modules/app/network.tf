@@ -129,6 +129,16 @@ resource "aws_vpc_security_group_ingress_rule" "alb_http" {
   ip_protocol = "tcp"
 }
 
+resource "aws_vpc_security_group_ingress_rule" "alb_test" {
+  security_group_id = aws_security_group.alb.id
+  description       = "Test listener from inside the VPC"
+
+  cidr_ipv4   = var.vpc_cidr
+  from_port   = 8080
+  to_port     = 8080
+  ip_protocol = "tcp"
+}
+
 resource "aws_vpc_security_group_egress_rule" "alb_to_tasks" {
   security_group_id            = aws_security_group.alb.id
   description                  = "ALB to application tasks"

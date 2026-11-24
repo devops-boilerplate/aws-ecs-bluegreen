@@ -14,7 +14,7 @@ infra/
 │   ├── variables.tf
 │   └── versions.tf
 ├── modules/app/          # module applicatif réutilisable
-│   ├── alb.tf            # ALB, deux target groups, listener, logs
+│   ├── alb.tf            # ALB, deux target groups, listeners prod/test, logs
 │   ├── codedeploy.tf     # application et deployment group blue/green
 │   ├── ecr.tf            # dépôt immuable, scan, cycle de vie
 │   ├── ecs.tf            # cluster, task definition, service, autoscaling
@@ -201,9 +201,16 @@ Le rôle applicatif ne peut transmettre que les rôles d'exécution et de tâche
 ## CodeDeploy et ECS
 
 - Le service ECS est créé avec `deployment_controller = CODE_DEPLOY`.
-- Le listener HTTP de l'ALB pointe initialement vers le target group `blue`.
-- CodeDeploy utilise la paire `blue`/`green` et bascule le listener pendant le
-  déploiement.
+- Le listener de production (port 80) et le listener de test (port 8080)
+  pointent initialement vers le target group `blue`.
+- CodeDeploy utilise la paire `blue`/`green`. Il bascule d'abord le listener de
+  test vers le target group de remplacement, puis le listener de production.
+  Les deux listeners doivent pointer vers le target group primaire au début du
+  déploiement. Si le listener de test est ajouté à un environnement existant,
+  aligner son action par défaut sur celle du listener de production avant de
+  déployer.
+- Terraform ignore `default_action` sur les deux listeners : CodeDeploy en est
+  propriétaire après le premier déploiement.
 - Terraform ignore `task_definition`, `desired_count` et `load_balancer` sur le
   service : CodeDeploy et l'autoscaling en sont propriétaires après le premier
   apply.
@@ -285,7 +292,7 @@ supprimer toutes les versions des objets.
 | `BucketAlreadyExists` au bootstrap | changer `state_bucket_name` et reporter le nom dans les backends |
 | `DeleteConflict` sur l'ALB | désactiver `enable_deletion_protection` et appliquer avant la destruction |
 | `RepositoryNotEmptyException` | vider l'ECR ou passer `ecr_force_delete = true` |
-| `InvalidParameterException` sur CodeDeploy | vérifier que les deux target groups existent et que le listener pointe vers `blue` |
+| `InvalidParameterException` sur CodeDeploy | vérifier que les deux target groups existent et que les listeners 80 et 8080 pointent vers le target group primaire |
 | Les tâches ne démarrent pas | vérifier les subnets privés, le NAT gateway, le rôle d'exécution et les logs CloudWatch |
 
 ## Coûts

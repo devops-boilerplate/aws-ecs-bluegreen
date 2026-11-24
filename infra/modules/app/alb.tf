@@ -75,7 +75,30 @@ resource "aws_lb_listener" "http" {
     target_group_arn = aws_lb_target_group.blue.arn
   }
 
+  lifecycle {
+    ignore_changes = [default_action]
+  }
+
   tags = merge(local.tags, { Name = "${local.name_prefix}-http" })
+}
+
+# Test listener: CodeDeploy uses it to validate the replacement task set before
+# shifting production traffic. CodeDeploy owns its default action after creation.
+resource "aws_lb_listener" "test" {
+  load_balancer_arn = aws_lb.main.arn
+  port              = 8080
+  protocol          = "HTTP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.blue.arn
+  }
+
+  lifecycle {
+    ignore_changes = [default_action]
+  }
+
+  tags = merge(local.tags, { Name = "${local.name_prefix}-http-test" })
 }
 
 # ----------------------------------------------------------------------------
