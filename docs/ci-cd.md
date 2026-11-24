@@ -93,7 +93,10 @@ Pendant un déploiement, les contrôles supplémentaires sont :
 - scan de l'image avec Trivy, bloquant sur les vulnérabilités
   `HIGH`/`CRITICAL` corrigeables ;
 - génération d'un SBOM SPDX, conservé comme artefact du workflow ;
-- attestation de provenance `actions/attest-build-provenance` ;
+- attestation de provenance BuildKit attachée à l'image (`provenance: mode=max`) ;
+  `actions/attest-build-provenance` est exécuté en plus lorsque le dépôt est
+  public, car GitHub ne propose pas cette fonctionnalité pour les dépôts privés
+  appartenant à un utilisateur ;
 - smoke test HTTP à travers l'ALB (`/health`, `/ready`, `/`).
 
 ## Authentification AWS sans secret
@@ -188,7 +191,7 @@ L'approbation manuelle reste obligatoire pour chaque déploiement.
    - assume le rôle d'application `dev` ;
    - se connecte à ECR et construit l'image `linux/arm64` ;
    - pousse le tag `sha-<commit>` ;
-   - scanne l'image, génère le SBOM et l'attestation ;
+   - scanne l'image, génère le SBOM et l'attestation de provenance BuildKit ;
    - récupère la définition de tâche courante, remplace l'image par
      `<repo>@<digest>` et enregistre une nouvelle révision ;
    - crée un déploiement CodeDeploy all-at-once et attend son succès ;
@@ -343,8 +346,10 @@ aws deploy stop-deployment \
   l'environnement `dev`.
 - Un seul compte AWS pour `dev` et `prod`. L'isolation repose sur IAM et les
   environnements GitHub, pas sur des comptes séparés.
-- Pas de signature d'image (cosign) : seules l'attestation de provenance et le
-  SBOM sont produits.
+- Pas de signature d'image (cosign) : la provenance est attachée à l'image par
+  BuildKit et le SBOM est produit comme artefact. Les attestations GitHub
+  (`actions/attest-build-provenance`) ne sont disponibles que pour un dépôt
+  public ; l'étape est donc conditionnelle.
 - Pas d'ECS Exec ni d'accès SSH. Le diagnostic passe par les logs CloudWatch.
 - Le state du bootstrap est local et n'est pas versionné. Il doit être sauvegardé
   séparément.
