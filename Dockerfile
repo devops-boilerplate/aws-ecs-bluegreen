@@ -20,6 +20,19 @@ LABEL org.opencontainers.image.title="beanstalk-nodejs-app" \
 
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 
+# The application only needs the node binary. Remove the package managers
+# bundled in the base image so they are not shipped (and scanned) at runtime.
+RUN rm -rf \
+      /usr/local/lib/node_modules/npm \
+      /usr/local/lib/node_modules/corepack \
+      /usr/local/lib/node_modules/yarn \
+      /opt/yarn-v1.22.22 \
+      /usr/local/bin/npm \
+      /usr/local/bin/npx \
+      /usr/local/bin/corepack \
+      /usr/local/bin/yarn \
+      /usr/local/bin/yarnpkg
+
 WORKDIR /app
 
 COPY --from=deps /app/node_modules ./node_modules
