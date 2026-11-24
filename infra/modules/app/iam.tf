@@ -264,6 +264,7 @@ resource "aws_iam_role_policy" "gha_terraform" {
         Effect = "Allow"
         Action = [
           "application-autoscaling:Describe*",
+          "application-autoscaling:ListTagsForResource",
           "cloudwatch:Describe*",
           "cloudwatch:Get*",
           "cloudwatch:List*",

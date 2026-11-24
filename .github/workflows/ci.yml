@@ -237,7 +237,9 @@ jobs:
 
       - name: Plan
         if: steps.config.outputs.configured == 'true'
-        run: terraform plan -input=false -no-color -lock-timeout=5m -var-file=dev.tfvars -out=tfplan | tee plan.txt
+        run: |
+          set -o pipefail
+          terraform plan -input=false -no-color -lock-timeout=5m -var-file=dev.tfvars -out=tfplan | tee plan.txt
 
       - name: Publish plan to the job summary
         if: always()
