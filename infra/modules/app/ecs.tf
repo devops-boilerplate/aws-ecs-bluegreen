@@ -117,9 +117,10 @@ resource "aws_ecs_service" "app" {
   }
 
   # Terraform bootstraps the service; CodeDeploy and the application auto scaler
-  # own these attributes afterwards.
+  # own these attributes afterwards. platform_version resolves to a concrete
+  # version (for example 1.4.0) and cannot be updated on a CODE_DEPLOY service.
   lifecycle {
-    ignore_changes = [task_definition, desired_count, load_balancer]
+    ignore_changes = [task_definition, desired_count, load_balancer, platform_version]
   }
 
   depends_on = [
