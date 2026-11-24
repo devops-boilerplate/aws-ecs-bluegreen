@@ -313,6 +313,8 @@ resource "aws_iam_role_policy" "gha_terraform" {
           "application-autoscaling:DeregisterScalableTarget",
           "application-autoscaling:PutScalingPolicy",
           "application-autoscaling:RegisterScalableTarget",
+          "application-autoscaling:TagResource",
+          "application-autoscaling:UntagResource",
           "cloudwatch:DeleteAlarms",
           "cloudwatch:DeleteDashboards",
           "cloudwatch:PutDashboard",
