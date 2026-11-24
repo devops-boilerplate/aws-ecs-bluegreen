@@ -30,8 +30,8 @@ Principes :
 - une image construite une seule fois par déploiement, poussée avec un tag
   immuable, puis déployée par digest ;
 - la production n'est déployée que depuis un tag semver et après approbation ;
-- CodeDeploy bascule le trafic entre deux target groups et peut annuler un
-  déploiement sur alarme ;
+- CodeDeploy bascule le trafic entre deux target groups, via un listener de
+  production et un listener de test, et peut annuler un déploiement sur alarme ;
 - l'infrastructure est décrite dans Terraform et contrôlée par le même pipeline.
 
 ## Workflows et déclencheurs
