@@ -173,22 +173,25 @@ Ce sont des variables, pas des secrets : aucune valeur sensible n'y figure.
 
 L'environnement `prod` est configuré avec :
 
-- un reviewer, par défaut `ebouther` ;
-- `prevent_self_review = false`, car il n'y a qu'un mainteneur ; sinon personne
-  ne pourrait approuver ;
-- une politique de branches autorisant `main` et les tags `v*`.
+- une politique de branches autorisant `main` et les tags `v*` ;
+- aucun reviewer : GitHub Free pour un dépôt privé ne permet pas cette règle ;
+- un déploiement prod uniquement par `workflow_dispatch` sur le tag, avec
+  `prod_tag=vX.Y.Z`.
 
 La politique de branches empêche un job issu d'une branche arbitraire de
 déployer en production, même si son workflow référence l'environnement `prod`.
-L'approbation manuelle reste obligatoire pour chaque déploiement.
+Le lancement manuel sur le tag remplace l'approbation d'environnement.
 
 ## Flux de développement
 
 1. Une branche est poussée et une pull request vers `main` est ouverte.
 2. `ci.yml` exécute les contrôles. Le plan Terraform de `dev` est publié dans le
    résumé du job.
-3. La pull request est fusionnée en squash. La protection de `main` impose une
-   branche à jour et tous les checks verts.
+3. La pull request est fusionnée en squash. Les réglages du dépôt imposent le
+   squash et la suppression de la branche. Sur un plan qui le permet, la
+   protection de `main` impose une branche à jour et tous les checks verts ;
+   sinon, le workflow `Main guard` échoue si un commit arrive sur `main` sans
+   pull request fusionnée.
 4. `deploy.yml` démarre sur `main` :
    - `ci` rejoue les contrôles ;
    - `infra-dev` exécute `terraform apply` pour `dev` ;
@@ -360,6 +363,11 @@ aws deploy stop-deployment \
 - Un seul NAT gateway pour les deux zones de disponibilité. Les tâches sont
   réparties sur deux zones, mais la sortie internet n'est pas redondante.
 - L'infrastructure de `prod` est appliquée manuellement via `infra.yml`.
+- GitHub Free pour un dépôt privé ne fournit ni protection de branche ni
+  rulesets. Le dépôt impose le squash et la suppression de branche, et
+  `Main guard` signale les pushes directs sur `main`. Pour une protection
+  stricte, passer à GitHub Pro ou rendre le dépôt public, puis relancer
+  `scripts/protect-main.sh`.
 - Les emails d'alarme ne sont pas configurés. Les alarmes restent actives pour
   CodeDeploy, mais aucune notification n'est envoyée.
 - L'environnement GitHub `dev` n'a pas de protection, afin que le plan Terraform

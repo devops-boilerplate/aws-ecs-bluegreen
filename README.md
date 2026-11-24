@@ -177,12 +177,18 @@ est semver et ancêtre de `main`. Le déploiement prod démarre ensuite par le
 lancement manuel sur le tag. Le job construit l'image `v2.0.0`, la scanne, puis
 la déploie en canary.
 
-Après la fusion de la pull request d'infrastructure, activer la protection de
-`main` :
+Après la fusion de la pull request d'infrastructure, tenter d'activer la
+protection de `main` :
 
 ```bash
 ./scripts/protect-main.sh
 ```
+
+GitHub Free pour un dépôt privé refuse la protection de branche et les rulesets.
+Le script applique alors le squash-only et la suppression de branche, puis
+affiche la limite. Le workflow `Main guard` échoue si un commit arrive sur
+`main` sans pull request fusionnée. Pour une protection stricte, passer à
+GitHub Pro ou rendre le dépôt public, puis relancer le script.
 
 ## Structure du dépôt
 
@@ -215,7 +221,11 @@ Après la fusion de la pull request d'infrastructure, activer la protection de
 - HTTP uniquement, sans TLS, nom de domaine personnalisé ni WAF.
 - Un seul NAT gateway pour les deux zones de disponibilité.
 - L'infrastructure de `prod` n'est pas appliquée automatiquement lors d'un tag :
-  elle passe par le workflow `Infrastructure` avec approbation.
+  elle passe par le workflow `Infrastructure` avec un lancement manuel.
+- GitHub Free pour un dépôt privé ne fournit ni protection de branche ni
+  rulesets. Le dépôt impose le squash-only et `Main guard` signale les pushes
+  directs ; passer à GitHub Pro ou rendre le dépôt public pour une protection
+  stricte.
 - Les notifications email des alarmes ne sont pas encore configurées
   (`alarm_emails = []`). Les alarmes restent actives pour CodeDeploy.
 - Les actions GitHub sont épinglées par version majeure, pas par empreinte de
