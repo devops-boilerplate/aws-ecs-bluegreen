@@ -190,8 +190,10 @@ L'approbation manuelle reste obligatoire pour chaque déploiement.
 5. `deploy-env.yml` :
    - assume le rôle d'application `dev` ;
    - se connecte à ECR et construit l'image `linux/arm64` ;
-   - pousse le tag `sha-<commit>` ;
-   - scanne l'image, génère le SBOM et l'attestation de provenance BuildKit ;
+   - pousse le tag `sha-<commit>` ; l'index OCI contient le manifeste ARM64 et
+     l'attestation de provenance BuildKit ;
+   - résout le digest du manifeste `linux/arm64` dans cet index ;
+   - scanne cette image, génère le SBOM et l'attestation de provenance ;
    - récupère la définition de tâche courante, remplace l'image par
      `<repo>@<digest>` et enregistre une nouvelle révision ;
    - crée un déploiement CodeDeploy all-at-once et attend son succès ;
@@ -243,6 +245,11 @@ séparation évite qu'un tag applicatif modifie l'infrastructure par surprise.
 - Lorsqu'un workflow est relancé, le job détecte que le tag existe déjà,
   réutilise son digest et ne reconstruit pas l'image. Les scans, le SBOM et
   l'attestation sont tout de même rejoués.
+- Le build produit un index OCI (manifeste `linux/arm64` + manifeste
+  d'attestation). Le workflow extrait le digest du manifeste `linux/arm64` et
+  l'utilise pour le scan, le SBOM, l'attestation et la définition de tâche.
+  Cela évite que Trivy, exécuté sur un runner AMD64, cherche un manifeste
+  `linux/amd64` absent de l'index.
 - La définition de tâche référence l'image par digest, pas par tag. Le tag sert
   uniquement à publier et à identifier la version.
 - La politique de cycle de vie supprime les images non taguées après 7 jours et
