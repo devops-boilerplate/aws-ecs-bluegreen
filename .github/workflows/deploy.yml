@@ -1,0 +1,90 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+  attestations: write
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  ci:
+    name: CI
+    uses: ./.github/workflows/ci.yml
+    permissions:
+      contents: read
+      id-token: write
+      pull-requests: read
+
+  infra-dev:
+    name: Terraform apply (dev)
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    uses: ./.github/workflows/infra.yml
+    with:
+      environment: dev
+      operation: apply
+    permissions:
+      contents: read
+      id-token: write
+
+  deploy-dev:
+    name: Deploy dev
+    needs: [ci, infra-dev]
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    uses: ./.github/workflows/deploy-env.yml
+    with:
+      environment: dev
+      image_tag: sha-${{ github.sha }}
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+
+  verify-tag:
+    name: Verify release tag
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout source (full history)
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Check that the tag is semver and points to main
+        run: |
+          set -euo pipefail
+
+          if [[ ! "${GITHUB_REF_NAME}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Tag ${GITHUB_REF_NAME} is not a semver release tag (vX.Y.Z)."
+            exit 1
+          fi
+
+          git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main
+
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "::error::Tag ${GITHUB_REF_NAME} does not point to a commit on main."
+            exit 1
+          fi
+
+  deploy-prod:
+    name: Deploy prod
+    needs: [ci, verify-tag]
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    uses: ./.github/workflows/deploy-env.yml
+    with:
+      environment: prod
+      image_tag: ${{ github.ref_name }}
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
