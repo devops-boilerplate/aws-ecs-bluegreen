@@ -99,13 +99,8 @@ ESLint, tests Node, `npm audit` (dépendances de production), gitleaks, Trivy
 `dev` et `prod`) et le plan Terraform de `dev`.
 
 Sur `main`, chaque fusion lance le déploiement de `dev`. La production est
-déployée uniquement depuis un tag `vX.Y.Z`, par un lancement manuel de
-`deploy.yml` sur ce tag. L'environnement GitHub `prod` n'accepte que `main` et
-les tags `v*`.
-
-GitHub Free pour un dépôt privé ne permet pas d'exiger un reviewer sur un
-environnement. Le lancement manuel depuis le tag constitue donc l'approbation ;
-si le plan le permet, `setup-github-env.sh prod` configure aussi le reviewer.
+déployée uniquement lors du push d'un tag `vX.Y.Z`, après approbation manuelle
+de l'environnement GitHub `prod`.
 
 ## Environnements
 
@@ -167,28 +162,24 @@ git pull
 git tag -a v2.0.0 -m "v2.0.0"
 git push origin v2.0.0
 gh release create v2.0.0 --generate-notes --verify-tag
-
-# Déclencher le déploiement prod depuis le tag
-gh workflow run deploy.yml --ref v2.0.0 -f prod_tag=v2.0.0
 ```
 
-Le push du tag déclenche `deploy.yml`, qui exécute la CI et vérifie que le tag
-est semver et ancêtre de `main`. Le déploiement prod démarre ensuite par le
-lancement manuel sur le tag. Le job construit l'image `v2.0.0`, la scanne, puis
-la déploie en canary.
+Le push du tag déclenche `deploy.yml`, qui exécute la CI, vérifie que le tag est
+semver et ancêtre de `main`, puis démarre le job `Deploy prod`. Ce job reste en
+attente jusqu'à l'approbation de l'environnement `prod` dans l'onglet
+**Actions**. Après approbation, l'image `v2.0.0` est construite, scannée, puis
+déployée en canary 10 % pendant 5 minutes.
 
-Après la fusion de la pull request d'infrastructure, tenter d'activer la
-protection de `main` :
+Après la fusion de la pull request d'infrastructure, activer la protection de
+`main` :
 
 ```bash
 ./scripts/protect-main.sh
 ```
 
-GitHub Free pour un dépôt privé refuse la protection de branche et les rulesets.
-Le script applique alors le squash-only et la suppression de branche, puis
-affiche la limite. Le workflow `Main guard` échoue si un commit arrive sur
-`main` sans pull request fusionnée. Pour une protection stricte, passer à
-GitHub Pro ou rendre le dépôt public, puis relancer le script.
+Le dépôt public autorise la protection de branche, le ruleset `release-tags` et
+le reviewer obligatoire de l'environnement `prod`. Un push direct sur `main` ou
+un tag `v*` modifié est refusé.
 
 ## Structure du dépôt
 
@@ -222,10 +213,6 @@ GitHub Pro ou rendre le dépôt public, puis relancer le script.
 - Un seul NAT gateway pour les deux zones de disponibilité.
 - L'infrastructure de `prod` n'est pas appliquée automatiquement lors d'un tag :
   elle passe par le workflow `Infrastructure` avec un lancement manuel.
-- GitHub Free pour un dépôt privé ne fournit ni protection de branche ni
-  rulesets. Le dépôt impose le squash-only et `Main guard` signale les pushes
-  directs ; passer à GitHub Pro ou rendre le dépôt public pour une protection
-  stricte.
 - Les notifications email des alarmes ne sont pas encore configurées
   (`alarm_emails = []`). Les alarmes restent actives pour CodeDeploy.
 - Les actions GitHub sont épinglées par version majeure, pas par empreinte de

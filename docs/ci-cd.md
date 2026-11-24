@@ -64,14 +64,9 @@ ignoré. Il faut fusionner la branche avant de déployer ou de modifier `dev`.
 ### Sur un tag `v*`
 
 `deploy.yml` exécute `ci.yml`, vérifie que le tag est au format `vX.Y.Z` et
-qu'il pointe vers un commit ancêtre de `main`. Le déploiement `prod` n'est pas
-lancé automatiquement : un opérateur relance le workflow sur le tag avec
-`prod_tag=vX.Y.Z`. L'environnement `prod` n'autorise que `main` et les tags
-`v*`.
-
-GitHub Free pour un dépôt privé ne permet pas d'exiger un reviewer sur un
-environnement. Le lancement manuel sur le tag est la barrière d'approbation ;
-si le plan le permet, `setup-github-env.sh prod` ajoute le reviewer.
+qu'il pointe vers un commit ancêtre de `main`, puis lance `deploy-env.yml` pour
+`prod`. Le job de déploiement est bloqué tant que l'environnement `prod` n'a pas
+été approuvé.
 
 ## Contrôles
 
@@ -127,8 +122,8 @@ rôles de chaque environnement n'acceptent que les sujets suivants :
 
 | Environnement | Sujets autorisés |
 | --- | --- |
-| `dev` | `repo:ebouther@14021292/beanstalk-nodejs-app@1467806025:ref:refs/heads/main` et `repo:ebouther@14021292/beanstalk-nodejs-app@1467806025:environment:dev` |
-| `prod` | `repo:ebouther@14021292/beanstalk-nodejs-app@1467806025:environment:prod` |
+| `dev` | `repo:devops-boilerplate@360516626/beanstalk-nodejs-app@1467806025:ref:refs/heads/main` et `repo:devops-boilerplate@360516626/beanstalk-nodejs-app@1467806025:environment:dev` |
+| `prod` | `repo:devops-boilerplate@360516626/beanstalk-nodejs-app@1467806025:environment:prod` |
 
 Conséquences :
 
@@ -174,24 +169,23 @@ Ce sont des variables, pas des secrets : aucune valeur sensible n'y figure.
 L'environnement `prod` est configuré avec :
 
 - une politique de branches autorisant `main` et les tags `v*` ;
-- aucun reviewer : GitHub Free pour un dépôt privé ne permet pas cette règle ;
-- un déploiement prod uniquement par `workflow_dispatch` sur le tag, avec
-  `prod_tag=vX.Y.Z`.
+- un reviewer obligatoire, par défaut `ebouther` ;
+- `prevent_self_review = false`, car il n'y a qu'un mainteneur ; sinon personne
+  ne pourrait approuver ;
+- un déploiement automatique sur push d'un tag `vX.Y.Z`, bloqué jusqu'à
+  l'approbation.
 
 La politique de branches empêche un job issu d'une branche arbitraire de
 déployer en production, même si son workflow référence l'environnement `prod`.
-Le lancement manuel sur le tag remplace l'approbation d'environnement.
+L'approbation manuelle est obligatoire pour chaque déploiement prod.
 
 ## Flux de développement
 
 1. Une branche est poussée et une pull request vers `main` est ouverte.
 2. `ci.yml` exécute les contrôles. Le plan Terraform de `dev` est publié dans le
    résumé du job.
-3. La pull request est fusionnée en squash. Les réglages du dépôt imposent le
-   squash et la suppression de la branche. Sur un plan qui le permet, la
-   protection de `main` impose une branche à jour et tous les checks verts ;
-   sinon, le workflow `Main guard` échoue si un commit arrive sur `main` sans
-   pull request fusionnée.
+3. La pull request est fusionnée en squash. La protection de `main` impose une
+   branche à jour, tous les checks verts et un historique linéaire.
 4. `deploy.yml` démarre sur `main` :
    - `ci` rejoue les contrôles ;
    - `infra-dev` exécute `terraform apply` pour `dev` ;
@@ -227,31 +221,25 @@ pas la révision déployée par CodeDeploy.
    ```
 
 3. `deploy.yml` vérifie le format du tag et son appartenance à `main`.
-4. Lancer le déploiement prod depuis le tag :
-
-   ```bash
-   gh workflow run deploy.yml --ref v2.0.0 -f prod_tag=v2.0.0
-   ```
-
-5. L'image est construite avec le tag `v2.0.0`, poussée, scannée, puis déployée
-   par CodeDeploy en canary 10 % pendant 5 minutes.
+4. Le job `Deploy prod` attend l'approbation de l'environnement `prod` dans
+   l'onglet **Actions**.
+5. Après approbation, l'image est construite avec le tag `v2.0.0`, poussée,
+   scannée, puis déployée par CodeDeploy en canary 10 % pendant 5 minutes.
 6. Les alarmes CloudWatch sont branchées au deployment group. Une alarme ou un
    échec déclenche le rollback automatique de CodeDeploy.
 7. Le smoke test final valide le service.
 
-Créer la release GitHub avec des notes générées, puis lancer le déploiement
-depuis le tag :
+Créer la release GitHub avec des notes générées. Le push du tag déclenche le
+workflow ; il suffit ensuite d'approuver le déploiement :
 
 ```bash
 gh release create v2.0.0 --generate-notes --verify-tag
-gh workflow run deploy.yml --ref v2.0.0 -f prod_tag=v2.0.0
 ```
 
 L'infrastructure de `prod` n'est pas appliquée par le push du tag. Pour un
 changement d'infrastructure, lancer le workflow **Infrastructure** avec
-`environment = prod` et `operation = apply`. Le lancement manuel du workflow
-constitue la validation ; le plan GitHub actuel ne permet pas d'ajouter un
-reviewer d'environnement.
+`environment = prod` et `operation = apply`. Le job attend l'approbation de
+l'environnement `prod`.
 
 ## Tags, digests et rétention ECR
 
@@ -333,8 +321,8 @@ aws deploy stop-deployment \
 | `Not authorized to perform sts:AssumeRoleWithWebIdentity` | sujet OIDC, environnement ou dépôt différent | vérifier `github_subject_claims`, le nom de l'environnement et `AWS_ROLE_ARN` |
 | `Terraform plan skipped` dans la CI | variables de l'environnement `dev` absentes | lancer `scripts/setup-github-env.sh dev` |
 | `tag is immutable` dans ECR | push manuel d'un tag déjà publié | incrémenter la version ou utiliser un rollback |
-| Aucun job `Deploy prod` après un tag | le déploiement prod est manuel | lancer `gh workflow run deploy.yml --ref vX.Y.Z -f prod_tag=vX.Y.Z` |
-| `Failed to create the environment protection rule` | plan GitHub Free pour un dépôt privé | le lancement manuel remplace le reviewer ; voir la section release |
+| `Deploy prod` reste en attente | approbation de l'environnement | approuver dans **Actions**, vérifier le reviewer configuré |
+| `Failed to create the environment protection rule` | dépôt privé sur un plan sans reviewers | rendre le dépôt public ou passer à GitHub Pro, puis relancer `setup-github-env.sh prod` |
 | CodeDeploy revient à la version précédente | alarme ou échec de santé | consulter `aws deploy get-deployment` et les alarmes CloudWatch |
 | Smoke test en échec | cibles unhealthy, DNS ou démarrage trop lent | vérifier le target group, `aws ecs describe-services`, les logs CloudWatch |
 | `ResourceInUseException` à la destruction | images ECR restantes ou protection ALB | vider l'ECR ou activer `force_delete`, désactiver la protection ALB |
@@ -362,12 +350,8 @@ aws deploy stop-deployment \
 - HTTP uniquement : pas de TLS, de nom de domaine personnalisé ni de WAF.
 - Un seul NAT gateway pour les deux zones de disponibilité. Les tâches sont
   réparties sur deux zones, mais la sortie internet n'est pas redondante.
-- L'infrastructure de `prod` est appliquée manuellement via `infra.yml`.
-- GitHub Free pour un dépôt privé ne fournit ni protection de branche ni
-  rulesets. Le dépôt impose le squash et la suppression de branche, et
-  `Main guard` signale les pushes directs sur `main`. Pour une protection
-  stricte, passer à GitHub Pro ou rendre le dépôt public, puis relancer
-  `scripts/protect-main.sh`.
+- L'infrastructure de `prod` est appliquée manuellement via `infra.yml`, avec
+  approbation de l'environnement `prod`.
 - Les emails d'alarme ne sont pas configurés. Les alarmes restent actives pour
   CodeDeploy, mais aucune notification n'est envoyée.
 - L'environnement GitHub `dev` n'a pas de protection, afin que le plan Terraform
