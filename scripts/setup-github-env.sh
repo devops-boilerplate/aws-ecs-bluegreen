@@ -67,7 +67,8 @@ configure_prod_protection() {
     exit 1
   fi
 
-  jq -n \
+  local reviewer_configured=false
+  if jq -n \
     --argjson reviewer_id "$reviewer_id" \
     '{
       prevent_self_review: false,
@@ -77,7 +78,16 @@ configure_prod_protection() {
         custom_branch_policies: true
       }
     }' |
-    gh api --method PUT "repos/${REPO}/environments/prod" --input - >/dev/null
+    gh api --method PUT "repos/${REPO}/environments/prod" --input - >/dev/null 2>&1; then
+    reviewer_configured=true
+  else
+    echo "warning: GitHub did not accept a required reviewer for the prod environment." >&2
+    echo "         Private repositories on the Free plan do not support this rule." >&2
+    echo "         Falling back to the manual workflow_dispatch gate documented in docs/ci-cd.md." >&2
+
+    printf '%s' '{"deployment_branch_policy":{"protected_branches":false,"custom_branch_policies":true}}' |
+      gh api --method PUT "repos/${REPO}/environments/prod" --input - >/dev/null
+  fi
 
   local existing
   existing="$(gh api "repos/${REPO}/environments/prod/deployment-branch-policies" --paginate --jq '.branch_policies[] | "\(.type):\(.name)"')"
@@ -94,7 +104,9 @@ configure_prod_protection() {
     echo "environment prod: allowed tag v*"
   fi
 
-  echo "environment prod: reviewer ${REVIEWER_LOGIN} (self-review allowed)"
+  if [[ "$reviewer_configured" == "true" ]]; then
+    echo "environment prod: reviewer ${REVIEWER_LOGIN} (self-review allowed)"
+  fi
 }
 
 configure_environment_variables() {
@@ -181,7 +193,9 @@ GitHub configuration complete.
 Next steps:
   - run ./scripts/protect-main.sh (after the pull request is merged)
   - trigger the "Deploy" workflow for the first dev deployment
-  - apply infra/envs/prod manually, then push a vX.Y.Z tag for production
+  - apply infra/envs/prod manually
+  - push a vX.Y.Z tag, then run:
+      gh workflow run deploy.yml --ref vX.Y.Z -f prod_tag=vX.Y.Z
 EOF
 }
 

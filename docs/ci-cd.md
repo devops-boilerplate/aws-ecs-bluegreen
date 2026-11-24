@@ -17,8 +17,8 @@ flowchart LR
   CDDev --> SmokeDev[Smoke test]
 
   Tag[Tag vX.Y.Z] --> DeployProd[Deploy prod]
-  DeployProd --> Approve[Approbation GitHub]
-  Approve --> BuildProd[Build, scan, push ECR]
+  DeployProd --> Manual[Lancement manuel depuis le tag]
+  Manual --> BuildProd[Build, scan, push ECR]
   BuildProd --> CDProd[CodeDeploy canary 10% / 5 min]
   CDProd --> SmokeProd[Smoke test]
 ```
@@ -29,7 +29,8 @@ Principes :
   temporaires via OpenID Connect ;
 - une image construite une seule fois par déploiement, poussée avec un tag
   immuable, puis déployée par digest ;
-- la production n'est déployée que depuis un tag semver et après approbation ;
+- la production n'est déployée que depuis un tag semver, par un lancement
+  manuel depuis ce tag ;
 - CodeDeploy bascule le trafic entre deux target groups, via un listener de
   production et un listener de test, et peut annuler un déploiement sur alarme ;
 - l'infrastructure est décrite dans Terraform et contrôlée par le même pipeline.
@@ -63,9 +64,14 @@ ignoré. Il faut fusionner la branche avant de déployer ou de modifier `dev`.
 ### Sur un tag `v*`
 
 `deploy.yml` exécute `ci.yml`, vérifie que le tag est au format `vX.Y.Z` et
-qu'il pointe vers un commit ancêtre de `main`, puis lance `deploy-env.yml` pour
-`prod`. Le job de déploiement est bloqué tant que l'environnement `prod` n'a pas
-été approuvé.
+qu'il pointe vers un commit ancêtre de `main`. Le déploiement `prod` n'est pas
+lancé automatiquement : un opérateur relance le workflow sur le tag avec
+`prod_tag=vX.Y.Z`. L'environnement `prod` n'autorise que `main` et les tags
+`v*`.
+
+GitHub Free pour un dépôt privé ne permet pas d'exiger un reviewer sur un
+environnement. Le lancement manuel sur le tag est la barrière d'approbation ;
+si le plan le permet, `setup-github-env.sh prod` ajoute le reviewer.
 
 ## Contrôles
 
@@ -218,24 +224,31 @@ pas la révision déployée par CodeDeploy.
    ```
 
 3. `deploy.yml` vérifie le format du tag et son appartenance à `main`.
-4. Le job `Deploy prod` attend l'approbation de l'environnement `prod` dans
-   l'onglet **Actions**.
-5. Après approbation, l'image est construite avec le tag `v2.0.0`, poussée,
-   scannée, puis déployée par CodeDeploy en canary 10 % pendant 5 minutes.
+4. Lancer le déploiement prod depuis le tag :
+
+   ```bash
+   gh workflow run deploy.yml --ref v2.0.0 -f prod_tag=v2.0.0
+   ```
+
+5. L'image est construite avec le tag `v2.0.0`, poussée, scannée, puis déployée
+   par CodeDeploy en canary 10 % pendant 5 minutes.
 6. Les alarmes CloudWatch sont branchées au deployment group. Une alarme ou un
    échec déclenche le rollback automatique de CodeDeploy.
 7. Le smoke test final valide le service.
 
-Créer la release GitHub avec des notes générées :
+Créer la release GitHub avec des notes générées, puis lancer le déploiement
+depuis le tag :
 
 ```bash
 gh release create v2.0.0 --generate-notes --verify-tag
+gh workflow run deploy.yml --ref v2.0.0 -f prod_tag=v2.0.0
 ```
 
 L'infrastructure de `prod` n'est pas appliquée par le push du tag. Pour un
 changement d'infrastructure, lancer le workflow **Infrastructure** avec
-`environment = prod` et `operation = apply`, puis approuver le job. Cette
-séparation évite qu'un tag applicatif modifie l'infrastructure par surprise.
+`environment = prod` et `operation = apply`. Le lancement manuel du workflow
+constitue la validation ; le plan GitHub actuel ne permet pas d'ajouter un
+reviewer d'environnement.
 
 ## Tags, digests et rétention ECR
 
@@ -297,7 +310,8 @@ précédente.
    ```
 
 3. Lancer le workflow **Rollback** avec l'environnement et le numéro de
-   révision. Pour `prod`, l'approbation de l'environnement est requise.
+   révision. Pour `prod`, le lancement manuel du workflow constitue la
+   validation.
 4. Le workflow crée un déploiement CodeDeploy vers cette révision, attend la
    fin, puis exécute le smoke test.
 
@@ -316,7 +330,8 @@ aws deploy stop-deployment \
 | `Not authorized to perform sts:AssumeRoleWithWebIdentity` | sujet OIDC, environnement ou dépôt différent | vérifier `github_subject_claims`, le nom de l'environnement et `AWS_ROLE_ARN` |
 | `Terraform plan skipped` dans la CI | variables de l'environnement `dev` absentes | lancer `scripts/setup-github-env.sh dev` |
 | `tag is immutable` dans ECR | push manuel d'un tag déjà publié | incrémenter la version ou utiliser un rollback |
-| `Deploy prod` reste en attente | approbation de l'environnement | approuver dans **Actions**, vérifier le reviewer configuré |
+| Aucun job `Deploy prod` après un tag | le déploiement prod est manuel | lancer `gh workflow run deploy.yml --ref vX.Y.Z -f prod_tag=vX.Y.Z` |
+| `Failed to create the environment protection rule` | plan GitHub Free pour un dépôt privé | le lancement manuel remplace le reviewer ; voir la section release |
 | CodeDeploy revient à la version précédente | alarme ou échec de santé | consulter `aws deploy get-deployment` et les alarmes CloudWatch |
 | Smoke test en échec | cibles unhealthy, DNS ou démarrage trop lent | vérifier le target group, `aws ecs describe-services`, les logs CloudWatch |
 | `ResourceInUseException` à la destruction | images ECR restantes ou protection ALB | vider l'ECR ou activer `force_delete`, désactiver la protection ALB |
