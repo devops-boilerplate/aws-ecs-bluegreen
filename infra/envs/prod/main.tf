@@ -4,13 +4,18 @@ locals {
   state_bucket_name = "beanstalk-nodejs-app-tfstate-682227955413"
 
   # The repository uses immutable OIDC subjects, so the claim prefix includes
-  # the owner and repository numeric IDs.
-  github_subject_prefix = "repo:ebouther@14021292/beanstalk-nodejs-app@1467806025"
+  # the owner and repository numeric IDs. Keep both prefixes while the
+  # repository moves to the devops-boilerplate organization; the legacy prefix
+  # is removed once the transfer is complete.
+  github_subject_prefixes = [
+    "repo:ebouther@14021292/beanstalk-nodejs-app@1467806025",
+    "repo:devops-boilerplate@360516626/beanstalk-nodejs-app@1467806025",
+  ]
 
   tags = {
     Project     = local.app_name
     Environment = local.environment
-    Repository  = "github.com/ebouther/beanstalk-nodejs-app"
+    Repository  = "github.com/devops-boilerplate/beanstalk-nodejs-app"
     ManagedBy   = "terraform"
   }
 }
@@ -28,7 +33,7 @@ module "app" {
 
   github_oidc_provider_arn = data.aws_iam_openid_connect_provider.github.arn
   github_subject_claims = [
-    "${local.github_subject_prefix}:environment:prod",
+    for prefix in local.github_subject_prefixes : "${prefix}:environment:prod"
   ]
 
   # prod: two tasks, canary 10%/5min, 15-minute window to roll back to blue.

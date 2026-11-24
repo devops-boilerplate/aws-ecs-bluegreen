@@ -15,7 +15,7 @@ ARG APP_VERSION=dev
 
 LABEL org.opencontainers.image.title="beanstalk-nodejs-app" \
       org.opencontainers.image.description="Node.js service on AWS ECS Fargate" \
-      org.opencontainers.image.source="https://github.com/ebouther/beanstalk-nodejs-app" \
+      org.opencontainers.image.source="https://github.com/devops-boilerplate/beanstalk-nodejs-app" \
       org.opencontainers.image.version="${APP_VERSION}"
 
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup

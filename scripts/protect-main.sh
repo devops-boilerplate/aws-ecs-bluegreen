@@ -2,7 +2,8 @@
 #
 # Protect the main branch and enforce the pull-request workflow.
 #
-# Run this script once, after the CI/CD pull request has been merged.
+# Run this script after the repository has been moved to its final owner and
+# made public (or after upgrading to a plan that supports branch protection).
 # It requires the "repo" scope on the gh token and admin rights on the
 # repository.
 #
@@ -33,8 +34,7 @@ fi
 
 echo "repository: ${REPO}"
 
-protection_applied=false
-if gh api --method PUT "repos/${REPO}/branches/main/protection" --input - >/dev/null 2>&1 <<'JSON'
+if ! gh api --method PUT "repos/${REPO}/branches/main/protection" --input - >/dev/null <<'JSON'
 {
   "required_status_checks": {
     "strict": true,
@@ -69,9 +69,9 @@ if gh api --method PUT "repos/${REPO}/branches/main/protection" --input - >/dev/
 }
 JSON
 then
-  protection_applied=true
-else
-  echo "warning: branch protection is unavailable for this repository on the current GitHub plan." >&2
+  echo "error: branch protection could not be applied to main." >&2
+  echo "       Make the repository public or upgrade the GitHub plan, then rerun." >&2
+  exit 1
 fi
 
 # These repository settings do not require branch protection and are safe to
@@ -120,58 +120,25 @@ else
 fi
 
 if [[ "$ruleset_applied" != true ]]; then
-  echo "warning: repository rulesets are unavailable for this repository on the current GitHub plan." >&2
+  echo "error: the release-tags ruleset could not be applied." >&2
+  echo "       Make the repository public or upgrade the GitHub plan, then rerun." >&2
+  exit 1
 fi
 
 cat <<EOF
 
-Protection status:
-  - branch protection: $(if [[ "$protection_applied" == true ]]; then echo "applied"; else echo "unavailable"; fi)
-  - release-tag ruleset: $(if [[ "$ruleset_applied" == true ]]; then echo "applied"; else echo "unavailable"; fi)
-  - repository merges: squash-only, branch deleted after merge
-  - post-push guard: .github/workflows/main-guard.yml fails when a commit
-    reaches main without a merged pull request
-
-EOF
-
-if [[ "$protection_applied" == true ]]; then
-  cat <<EOF
 main is protected:
   - pull requests are mandatory, even for administrators
   - the branch must be up to date with main
   - all CI checks must pass
   - linear history only (squash merge), force pushes and deletions blocked
   - conversations must be resolved before merging
+  - repository merges: squash-only, branch deleted after merge
 
-EOF
-else
-  cat <<EOF
-Hard branch protection could not be applied. GitHub Free for private
-repositories does not provide branch protection or repository rulesets.
-The squash-only merge setting and the Main guard workflow remain active.
-
-To enable hard protection, upgrade the repository to GitHub Pro or make it
-public, then rerun this script.
-
-EOF
-fi
-
-if [[ "$ruleset_applied" == true ]]; then
-  cat <<EOF
 Release tags matching v* cannot be moved or deleted. To recover from a bad tag,
 disable the release-tags ruleset in Settings > Rules, fix the tag, then re-enable
 it.
 
-EOF
-else
-  cat <<EOF
-Release tags are not protected by a ruleset on this plan. Do not move or delete
-a v* tag manually; publish a new patch version instead.
-
-EOF
-fi
-
-cat <<EOF
 If a check is renamed in .github/workflows/ci.yml, update the contexts list in
 this script and run it again.
 EOF
