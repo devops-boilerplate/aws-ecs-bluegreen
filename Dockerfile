@@ -1,36 +1,42 @@
 # syntax=docker/dockerfile:1
 
-# ---- Build stage ----
-FROM node:20-alpine AS builder
+# ---- Dependencies stage ----
+FROM node:24-alpine AS deps
 
 WORKDIR /app
 
-# Install dependencies first (better layer caching)
 COPY package*.json ./
 RUN npm ci --omit=dev && mkdir -p node_modules
 
 # ---- Runtime stage ----
-FROM node:20-alpine AS runtime
+FROM node:24-alpine AS runtime
 
-# Run as non-root user
+ARG APP_VERSION=dev
+
+LABEL org.opencontainers.image.title="beanstalk-nodejs-app" \
+      org.opencontainers.image.description="Node.js service on AWS ECS Fargate" \
+      org.opencontainers.image.source="https://github.com/ebouther/beanstalk-nodejs-app" \
+      org.opencontainers.image.version="${APP_VERSION}"
+
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 
 WORKDIR /app
 
-# Copy only production dependencies and source
-COPY --from=builder /app/node_modules ./node_modules
+COPY --from=deps /app/node_modules ./node_modules
 COPY package*.json ./
 COPY server.js ./
 
 USER appuser
 
-ENV NODE_ENV=production
-ENV PORT=8080
+ENV NODE_ENV=production \
+    PORT=8080 \
+    APP_VERSION=${APP_VERSION}
 
 EXPOSE 8080
 
-# Health check (matches ALB target group)
+STOPSIGNAL SIGTERM
+
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:8080/ || exit 1
+  CMD wget --no-verbose --tries=1 --spider http://127.0.0.1:8080/health || exit 1
 
 CMD ["node", "server.js"]

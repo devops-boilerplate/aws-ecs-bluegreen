@@ -6,6 +6,12 @@ npm-debug.log
 Dockerfile
 .dockerignore
 *.md
+coverage
 .terraform
-terraform
-terraform-ecs
+*.tfstate*
+infra
+docs
+test
+scripts
+eslint.config.js
+.npmrc

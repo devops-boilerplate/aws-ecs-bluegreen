@@ -1,14 +1,20 @@
 {
   "name": "beanstalk-nodejs-app",
   "version": "1.0.0",
-  "description": "Node.js test application deployed on AWS Elastic Beanstalk",
+  "description": "Minimal Node.js service deployed to AWS ECS Fargate with blue/green CI/CD",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "test": "node --test"
+    "test": "node --test",
+    "lint": "eslint ."
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=24"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.15.0",
+    "globals": "^17.14.0"
   },
   "license": "ISC"
 }
