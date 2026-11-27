@@ -133,7 +133,7 @@ Conséquences :
 
 - renommer le dépôt, l'environnement GitHub ou changer de compte propriétaire
   casse l'authentification et impose de mettre à jour `github_subject_claims`
-  dans `infra/envs/<env>/main.tf` ;
+  dans `infra/live/<env>/main.tf` ;
 - un job qui n'est pas rattaché à l'environnement `prod` ne peut pas assumer le
   rôle de production ;
 - aucun access key ou secret AWS n'est stocké dans GitHub.
@@ -346,7 +346,7 @@ aws deploy stop-deployment \
   les épingler par SHA de commit.
 - **Checks requis** : si un job de `ci.yml` est renommé, mettre à jour
   `scripts/protect-main.sh` et relancer le script.
-- **Alarmes** : renseigner `alarm_emails` dans `infra/envs/<env>/<env>.tfvars`,
+- **Alarmes** : renseigner `alarm_emails` dans `infra/live/<env>/<env>.tfvars`,
   appliquer, puis confirmer l'abonnement reçu par email.
 
 ## Limites connues

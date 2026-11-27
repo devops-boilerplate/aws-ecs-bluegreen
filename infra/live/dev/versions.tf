@@ -3,7 +3,7 @@ terraform {
 
   backend "s3" {
     bucket       = "aws-ecs-bluegreen-tfstate-682227955413"
-    key          = "envs/dev/terraform.tfstate"
+    key          = "live/dev/terraform.tfstate"
     region       = "eu-north-1"
     encrypt      = true
     use_lockfile = true

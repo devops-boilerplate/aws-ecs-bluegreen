@@ -267,7 +267,7 @@ resource "aws_iam_role_policy" "gha_terraform" {
         Sid      = "StateObjects"
         Effect   = "Allow"
         Action   = ["s3:DeleteObject", "s3:GetObject", "s3:PutObject"]
-        Resource = "arn:${local.partition}:s3:::${var.state_bucket_name}/envs/${var.environment}/*"
+        Resource = "arn:${local.partition}:s3:::${var.state_bucket_name}/live/${var.environment}/*"
       },
       {
         Sid    = "ReadOnlyDescribe"

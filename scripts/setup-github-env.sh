@@ -117,7 +117,7 @@ configure_environment_variables() {
   output_file="$(mktemp)"
   error_file="$(mktemp)"
 
-  if ! terraform -chdir="${ROOT_DIR}/infra/envs/${environment}" output -json >"$output_file" 2>"$error_file"; then
+  if ! terraform -chdir="${ROOT_DIR}/infra/live/${environment}" output -json >"$output_file" 2>"$error_file"; then
     echo "error: unable to read Terraform outputs for ${environment}." >&2
     echo "       Run 'terraform init' and 'terraform apply' for this environment first." >&2
     sed 's/^/       /' "$error_file" >&2
@@ -195,7 +195,7 @@ GitHub configuration complete.
 Next steps:
   - run ./scripts/protect-main.sh (after the pull request is merged)
   - trigger the "Deploy" workflow for the first dev deployment
-  - apply infra/envs/prod manually
+  - apply infra/live/prod manually
   - push a vX.Y.Z tag and approve the prod environment deployment
 EOF
 }

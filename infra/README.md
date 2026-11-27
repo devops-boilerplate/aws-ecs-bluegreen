@@ -24,7 +24,7 @@ infra/
 │   ├── network.tf        # VPC, subnets, NAT, routes, security groups
 │   ├── outputs.tf
 │   └── variables.tf
-└── envs/
+└── live/
     ├── dev/
     │   ├── main.tf
     │   ├── outputs.tf
@@ -74,7 +74,7 @@ différents et deux clés de state distinctes :
 
 | | `dev` | `prod` |
 | --- | --- | --- |
-| State S3 | `envs/dev/terraform.tfstate` | `envs/prod/terraform.tfstate` |
+| State S3 | `live/dev/terraform.tfstate` | `live/prod/terraform.tfstate` |
 | Tâches | 1 à 2 | 2 à 6 |
 | CodeDeploy | `ECSAllAtOnce` | `ECSCanary10Percent5Minutes` |
 | Rétention blue | 0 minute | 15 minutes |
@@ -82,12 +82,12 @@ différents et deux clés de state distinctes :
 | Protection ALB | non | oui |
 | Suppression ECR avec images | autorisée | refusée |
 
-Les backends S3 sont écrits en dur dans `infra/envs/<env>/versions.tf` :
+Les backends S3 sont écrits en dur dans `infra/live/<env>/versions.tf` :
 
 ```hcl
 backend "s3" {
   bucket       = "aws-ecs-bluegreen-tfstate-682227955413"
-  key          = "envs/dev/terraform.tfstate"
+  key          = "live/dev/terraform.tfstate"
   region       = "eu-north-1"
   encrypt      = true
   use_lockfile = true
@@ -99,7 +99,7 @@ Si le compte ou le bucket change, mettre à jour les deux fichiers `versions.tf`
 ## Commandes courantes
 
 ```bash
-cd infra/envs/dev
+cd infra/live/dev
 
 terraform init
 terraform fmt -check -recursive ../..
@@ -159,7 +159,7 @@ Les variables sont définies dans `infra/modules/app/variables.tf`.
 
 Les fichiers `dev.tfvars` et `prod.tfvars` ne contiennent que `aws_region` et
 `alarm_emails`. Les paramètres propres à l'environnement sont dans
-`infra/envs/<env>/main.tf`.
+`infra/live/<env>/main.tf`.
 
 ## Sorties
 
@@ -249,7 +249,7 @@ L'abonnement doit être confirmé par email avant de recevoir les notifications.
 ### `dev`
 
 ```bash
-cd infra/envs/dev
+cd infra/live/dev
 terraform destroy -var-file=dev.tfvars
 ```
 
@@ -262,7 +262,7 @@ plusieurs minutes.
 La protection de l'ALB et du dépôt ECR empêche une destruction directe. Pour
 détruire volontairement `prod` :
 
-1. Dans `infra/envs/prod/main.tf`, passer temporairement
+1. Dans `infra/live/prod/main.tf`, passer temporairement
    `enable_deletion_protection = false` et, si les images doivent être perdues,
    `ecr_force_delete = true`.
 2. Appliquer la configuration pour mettre à jour les ressources :
