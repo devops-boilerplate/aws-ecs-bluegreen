@@ -1,16 +1,16 @@
 locals {
-  app_name          = "beanstalk-nodejs-app"
+  app_name          = "aws-ecs-bluegreen"
   environment       = "dev"
-  state_bucket_name = "beanstalk-nodejs-app-tfstate-682227955413"
+  state_bucket_name = "aws-ecs-bluegreen-tfstate-682227955413"
 
   # The repository uses immutable OIDC subjects, so the claim prefix includes
   # the owner and repository numeric IDs.
-  github_subject_prefix = "repo:devops-boilerplate@360516626/beanstalk-nodejs-app@1467806025"
+  github_subject_prefix = "repo:devops-boilerplate@360516626/aws-ecs-bluegreen@1467806025"
 
   tags = {
     Project     = local.app_name
     Environment = local.environment
-    Repository  = "github.com/devops-boilerplate/beanstalk-nodejs-app"
+    Repository  = "github.com/devops-boilerplate/aws-ecs-bluegreen"
     ManagedBy   = "terraform"
   }
 }

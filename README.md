@@ -1,11 +1,9 @@
-# beanstalk-nodejs-app
+# aws-ecs-bluegreen
 
 Service Node.js minimaliste déployé sur **AWS ECS Fargate (ARM64)** derrière un
 Application Load Balancer, avec des déploiements **blue/green CodeDeploy** et
-une chaîne CI/CD complète sur GitHub Actions.
-
-Le nom du dépôt est historique : l'application tournait initialement sur Elastic
-Beanstalk. L'infrastructure actuelle est entièrement décrite dans `infra/`.
+une chaîne CI/CD complète sur GitHub Actions. L'infrastructure est entièrement
+décrite dans `infra/`.
 
 ## Sommaire
 
@@ -79,8 +77,8 @@ curl --silent http://localhost:8080/health
 L'image conteneur peut être construite localement :
 
 ```bash
-docker build -t beanstalk-nodejs-app:local .
-docker run --rm -p 8080:8080 beanstalk-nodejs-app:local
+docker build -t aws-ecs-bluegreen:local .
+docker run --rm -p 8080:8080 aws-ecs-bluegreen:local
 ```
 
 ## Chaîne CI/CD
@@ -112,7 +110,7 @@ de l'environnement GitHub `prod`.
 | Rétention des logs | 30 jours | 90 jours |
 | Protection contre la suppression de l'ALB | non | oui |
 | Approbation GitHub | non | oui |
-| ECR | `beanstalk-nodejs-app-dev` | `beanstalk-nodejs-app-prod` |
+| ECR | `aws-ecs-bluegreen-dev` | `aws-ecs-bluegreen-prod` |
 
 Les deux environnements vivent dans le même compte AWS. L'isolation repose sur
 des rôles IAM et des environnements GitHub distincts.

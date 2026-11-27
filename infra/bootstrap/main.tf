@@ -6,10 +6,10 @@ data "aws_caller_identity" "current" {}
 
 locals {
   account_id  = data.aws_caller_identity.current.account_id
-  bucket_name = var.state_bucket_name != "" ? var.state_bucket_name : "beanstalk-nodejs-app-tfstate-${local.account_id}"
+  bucket_name = var.state_bucket_name != "" ? var.state_bucket_name : "aws-ecs-bluegreen-tfstate-${local.account_id}"
 
   tags = {
-    Project   = "beanstalk-nodejs-app"
+    Project   = "aws-ecs-bluegreen"
     Component = "terraform-bootstrap"
     ManagedBy = "terraform"
   }

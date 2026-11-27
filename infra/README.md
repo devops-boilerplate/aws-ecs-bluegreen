@@ -1,6 +1,6 @@
 # Infrastructure Terraform
 
-L'infrastructure de `beanstalk-nodejs-app` est décrite avec Terraform dans ce
+L'infrastructure de `aws-ecs-bluegreen` est décrite avec Terraform dans ce
 répertoire. Elle crée un environnement complet et isolé par valeur de
 `environment` : réseau, ALB, ECR, ECS Fargate, CodeDeploy, IAM et monitoring.
 
@@ -49,7 +49,7 @@ infra/
 
 Le bootstrap crée deux ressources account-wide :
 
-- le bucket S3 `beanstalk-nodejs-app-tfstate-682227955413`, versionné, chiffré,
+- le bucket S3 `aws-ecs-bluegreen-tfstate-682227955413`, versionné, chiffré,
   avec accès public bloqué et un verrou de state natif ;
 - le fournisseur OIDC `token.actions.githubusercontent.com`.
 
@@ -86,7 +86,7 @@ Les backends S3 sont écrits en dur dans `infra/envs/<env>/versions.tf` :
 
 ```hcl
 backend "s3" {
-  bucket       = "beanstalk-nodejs-app-tfstate-682227955413"
+  bucket       = "aws-ecs-bluegreen-tfstate-682227955413"
   key          = "envs/dev/terraform.tfstate"
   region       = "eu-north-1"
   encrypt      = true
@@ -183,16 +183,16 @@ terraform output -raw alb_dns_name
 
 Chaque environnement crée :
 
-- `beanstalk-nodejs-app-<env>-ecs-execution` : récupération de l'image et
+- `aws-ecs-bluegreen-<env>-ecs-execution` : récupération de l'image et
   écriture des logs ;
-- `beanstalk-nodejs-app-<env>-ecs-task` : rôle applicatif, volontairement vide ;
-- `beanstalk-nodejs-app-<env>-codedeploy` : rôle de service CodeDeploy ;
-- `beanstalk-nodejs-app-<env>-gha-app` : rôle GitHub Actions de déploiement ;
-- `beanstalk-nodejs-app-<env>-gha-terraform` : rôle GitHub Actions Terraform.
+- `aws-ecs-bluegreen-<env>-ecs-task` : rôle applicatif, volontairement vide ;
+- `aws-ecs-bluegreen-<env>-codedeploy` : rôle de service CodeDeploy ;
+- `aws-ecs-bluegreen-<env>-gha-app` : rôle GitHub Actions de déploiement ;
+- `aws-ecs-bluegreen-<env>-gha-terraform` : rôle GitHub Actions Terraform.
 
 Le rôle Terraform peut gérer les ressources régionales nécessaires, le state de
 son environnement et les rôles IAM préfixés par
-`beanstalk-nodejs-app-<env>-`. Il ne peut pas modifier les rôles de l'autre
+`aws-ecs-bluegreen-<env>-`. Il ne peut pas modifier les rôles de l'autre
 environnement.
 
 Le rôle applicatif ne peut transmettre que les rôles d'exécution et de tâche à
