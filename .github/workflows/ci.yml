@@ -164,7 +164,7 @@ jobs:
 
     defaults:
       run:
-        working-directory: infra/envs/${{ matrix.environment }}
+        working-directory: infra/live/${{ matrix.environment }}
 
     steps:
       - name: Checkout source
@@ -214,7 +214,7 @@ jobs:
 
     defaults:
       run:
-        working-directory: infra/envs/dev
+        working-directory: infra/live/dev
 
     steps:
       - name: Checkout source

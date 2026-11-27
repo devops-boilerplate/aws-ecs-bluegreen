@@ -43,7 +43,7 @@ jobs:
 
     defaults:
       run:
-        working-directory: infra/envs/${{ inputs.environment }}
+        working-directory: infra/live/${{ inputs.environment }}
 
     env:
       TF_IN_AUTOMATION: "true"

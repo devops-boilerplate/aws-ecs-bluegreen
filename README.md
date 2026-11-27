@@ -130,7 +130,7 @@ terraform init
 terraform apply
 
 # 2. Environnement dev
-cd ../envs/dev
+cd ../live/dev
 terraform init
 terraform apply -var-file=dev.tfvars
 
@@ -148,7 +148,7 @@ Pour la production, appliquer d'abord l'infrastructure, puis configurer GitHub,
 puis créer un tag de release :
 
 ```bash
-cd infra/envs/prod
+cd infra/live/prod
 terraform init
 terraform apply -var-file=prod.tfvars
 cd ../../..
@@ -188,7 +188,7 @@ un tag `v*` modifié est refusé.
 ├── infra/
 │   ├── bootstrap/         # bucket de state S3 et provider OIDC GitHub
 │   ├── modules/app/       # VPC, ALB, ECR, ECS, CodeDeploy, IAM, monitoring
-│   └── envs/dev|prod/     # paramétrage et backend de chaque environnement
+│   └── live/dev|prod/     # paramétrage et backend de chaque environnement
 ├── scripts/
 │   ├── setup-github-env.sh
 │   ├── protect-main.sh
