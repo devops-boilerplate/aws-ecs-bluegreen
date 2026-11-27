@@ -1,5 +1,5 @@
 {
-  "name": "beanstalk-nodejs-app",
+  "name": "aws-ecs-bluegreen",
   "version": "1.0.0",
   "description": "Minimal Node.js service deployed to AWS ECS Fargate with blue/green CI/CD",
   "main": "server.js",

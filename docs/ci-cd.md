@@ -112,9 +112,9 @@ Chaque environnement possède trois rôles applicatifs créés par Terraform :
 
 | Rôle | Utilisation | Droits principaux |
 | --- | --- | --- |
-| `beanstalk-nodejs-app-<env>-gha-app` | `deploy-env.yml`, `rollback.yml` | ECR push/pull, enregistrement de définitions de tâche, création de déploiements CodeDeploy, lecture des logs |
-| `beanstalk-nodejs-app-<env>-gha-terraform` | `ci.yml` (plan dev), `infra.yml` | state S3 de l'environnement, ressources Terraform de la région, rôles IAM préfixés |
-| `beanstalk-nodejs-app-<env>-codedeploy` | service CodeDeploy | rôle managé `AWSCodeDeployRoleForECS` |
+| `aws-ecs-bluegreen-<env>-gha-app` | `deploy-env.yml`, `rollback.yml` | ECR push/pull, enregistrement de définitions de tâche, création de déploiements CodeDeploy, lecture des logs |
+| `aws-ecs-bluegreen-<env>-gha-terraform` | `ci.yml` (plan dev), `infra.yml` | state S3 de l'environnement, ressources Terraform de la région, rôles IAM préfixés |
+| `aws-ecs-bluegreen-<env>-codedeploy` | service CodeDeploy | rôle managé `AWSCodeDeployRoleForECS` |
 
 Les rôles ECS d'exécution et de tâche sont également créés par Terraform. Le
 rôle d'application ne peut transmettre que ces deux rôles à ECS.
@@ -126,8 +126,8 @@ rôles de chaque environnement n'acceptent que les sujets suivants :
 
 | Environnement | Sujets autorisés |
 | --- | --- |
-| `dev` | `repo:devops-boilerplate@360516626/beanstalk-nodejs-app@1467806025:ref:refs/heads/main` et `repo:devops-boilerplate@360516626/beanstalk-nodejs-app@1467806025:environment:dev` |
-| `prod` | `repo:devops-boilerplate@360516626/beanstalk-nodejs-app@1467806025:environment:prod` |
+| `dev` | `repo:devops-boilerplate@360516626/aws-ecs-bluegreen@1467806025:ref:refs/heads/main` et `repo:devops-boilerplate@360516626/aws-ecs-bluegreen@1467806025:environment:dev` |
+| `prod` | `repo:devops-boilerplate@360516626/aws-ecs-bluegreen@1467806025:environment:prod` |
 
 Conséquences :
 
@@ -287,7 +287,7 @@ précédente.
 
    ```bash
    aws ecs list-task-definitions \
-     --family-prefix beanstalk-nodejs-app-prod \
+     --family-prefix aws-ecs-bluegreen-prod \
      --status ACTIVE \
      --sort DESC \
      --max-items 10 \
@@ -299,7 +299,7 @@ précédente.
 
    ```bash
    aws ecs describe-task-definition \
-     --task-definition beanstalk-nodejs-app-prod:12 \
+     --task-definition aws-ecs-bluegreen-prod:12 \
      --query 'taskDefinition.containerDefinitions[0].image' \
      --output text
    ```

@@ -5,7 +5,7 @@ variable "aws_region" {
 }
 
 variable "state_bucket_name" {
-  description = "Name of the S3 bucket holding Terraform state. Defaults to beanstalk-nodejs-app-tfstate-<account-id>."
+  description = "Name of the S3 bucket holding Terraform state. Defaults to aws-ecs-bluegreen-tfstate-<account-id>."
   type        = string
   default     = ""
 }
