@@ -339,7 +339,8 @@ aws deploy stop-deployment \
   `Dockerfile` et `node-version` dans `ci.yml`.
 - **Terraform** : la CI épingle `1.15.5`. Mettre à jour cette valeur et
   `required_version` ensemble.
-- **Provider AWS** : contrainte `~> 5.100` dans les trois racines Terraform.
+- **Provider AWS** : contrainte `~> 6.74` dans les trois racines Terraform et
+  dans le module `app`.
 - **Actions GitHub** : les versions majeures sont épinglées (`@v7`, `@v4`,
   `@v3`). Elles doivent rester compatibles avec le runtime Node 24 des runners,
   qui a remplacé Node 20 en 2026. Pour durcir la chaîne d'approvisionnement,
